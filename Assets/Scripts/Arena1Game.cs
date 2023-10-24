@@ -9,6 +9,8 @@ public class Arena1Game : NetworkBehaviour
     public Player hostPrefab;
     public Camera arenaCamera;
 
+    private NetworkedPlayers networkedPlayers;
+
     private int positionIndex = 0;
     private Vector3[] startPositions = new Vector3[]
     {
@@ -18,19 +20,12 @@ public class Arena1Game : NetworkBehaviour
         new Vector3(0, 2, -4)
     };
 
-    private int colorIndex = 0;
-    private Color[] playerColors = new Color[] {
-        Color.cyan,
-        Color.green,
-        Color.blue,
-        Color.magenta
-    };
-
     // Start is called before the first frame update
     void Start()
     {
         arenaCamera.enabled = !IsClient;
         arenaCamera.GetComponent<AudioListener>().enabled = !IsClient;
+        networkedPlayers = GameObject.Find("NetworkedPlayers").GetComponent<NetworkedPlayers>();
         if (IsServer)
         {
             SpawnPlayers();
@@ -39,13 +34,11 @@ public class Arena1Game : NetworkBehaviour
 
     private void SpawnPlayers()
     {
-        foreach(ulong clientId in NetworkManager.ConnectedClientsIds)
+        foreach(NetworkPlayerInfo info in networkedPlayers.allNetPlayers)
         {
-            
-
-            Player playerSpawn = Instantiate(IsHost && clientId == NetworkManager.LocalClientId ? hostPrefab : playerPrefab, NextPosition(), Quaternion.identity);
-            playerSpawn.GetComponent<NetworkObject>().SpawnAsPlayerObject(clientId);
-            playerSpawn.playerColorNetVar.Value = NextColor();
+            Player playerSpawn = Instantiate(IsHost && info.clientId == NetworkManager.LocalClientId ? hostPrefab : playerPrefab, NextPosition(), Quaternion.identity);
+            playerSpawn.GetComponent<NetworkObject>().SpawnAsPlayerObject(info.clientId);
+            playerSpawn.playerColorNetVar.Value = info.color;
         }
     }
 
@@ -58,17 +51,5 @@ public class Arena1Game : NetworkBehaviour
             positionIndex = 0;
         }
         return pos;
-    }
-
-
-    private Color NextColor()
-    {
-        Color newColor = playerColors[colorIndex];
-        colorIndex += 1;
-        if (colorIndex > playerColors.Length - 1)
-        {
-            colorIndex = 0;
-        }
-        return newColor;
     }
 }
