@@ -8,6 +8,7 @@ public class Lobby : NetworkBehaviour
 {
     public LobbyUi lobbyUi;
     public NetworkedPlayers networkedPlayers;
+    private ulong[] selfClientId = new ulong[1];
 
     void Start()
     {
@@ -123,6 +124,27 @@ public class Lobby : NetworkBehaviour
     [ServerRpc(RequireOwnership = false)]
     private void UpdatePlayerNameServerRpc(string newValue, ServerRpcParams rpcParams = default)
     {
-        networkedPlayers.UpdatePlayerName(rpcParams.Receive.SenderClientId, newValue);
+        if (VerifyName(newValue))
+        {
+            networkedPlayers.UpdatePlayerName(rpcParams.Receive.SenderClientId, newValue);
+        }
+        else
+        {
+            ClientRpcParams clientRpcParams = default;
+            selfClientId[0] = rpcParams.Receive.SenderClientId;
+            clientRpcParams.Send.TargetClientIds = selfClientId;
+            ResetNameFieldToPreviousValueClientRpc(clientRpcParams);
+        }
+    }
+
+    private static bool VerifyName(string name)
+    {
+        return name.Length <= 15 && !name.Contains('f', StringComparison.InvariantCultureIgnoreCase);
+    }
+
+    [ClientRpc]
+    private void ResetNameFieldToPreviousValueClientRpc(ClientRpcParams clientRpcParams = default)
+    {
+        lobbyUi.SetPlayerName(networkedPlayers.allNetPlayers[((int)NetworkManager.LocalClientId)].playerName.ToString());
     }
 }
